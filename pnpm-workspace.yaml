@@ -7,7 +7,7 @@ packages:
 catalog:
   'typescript': ^7.0.2
   '@types/node': ^26.6.5
-  'rolldown': ^1.2.14
+  'rolldown': ^1.2.15
   'oxfmt': ^0.73.0
   'vite-plus': ^1.2.0
   # `vite` for the code that is a plugin of it (@pipis/docs-kit): the one that Vite+ is made of, so that there is one Vite in the process.
