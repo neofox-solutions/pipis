@@ -48,9 +48,11 @@ export interface SiteOptions {
   pages?: 'separate' | 'single';
   /** What the build leaves: every page as a file (`static`, the default), or the server's code to render them with (`server`, see docs/authoring.md). */
   build?: 'static' | 'server';
+  /** The look of the site and of its landing page: the name of a folder in `src/themes/`, whose `site.css` is the style sheet (`classic`, the default, or `terminal`). */
+  theme?: string;
 }
 
-export function docsSite({ render = 'hydrate', pages = 'separate', build = 'static' }: SiteOptions = {}): Plugin {
+export function docsSite({ render = 'hydrate', pages = 'separate', build = 'static', theme = 'classic' }: SiteOptions = {}): Plugin {
   return docsKit({
     docs: '../../docs',
     siteTitle,
@@ -61,7 +63,10 @@ export function docsSite({ render = 'hydrate', pages = 'separate', build = 'stat
     library: examplesLibrary,
     watch: [library],
     adapter: 'src/adapter.ts',
-    styles: ['src/site.css'],
+    // A theme is one style sheet, which the kit's own (code, examples, search) come before. The kit's variables are the theme's to define.
+    // The fonts are in the style sheet that every page links, and not in the script: a script's style sheet is added when the script has run, and
+    // in the development server that is after the page is shown, so the page would be drawn once in the fallback faces.
+    styles: ['src/fonts.css', `src/themes/${theme}/site.css`],
     server: 'src/server.tsx',
     client: 'src/client.ts',
     // The page is rendered on the server, by the build of pipis that writes markup. In the browser, a page that is hydrated is taken over by the

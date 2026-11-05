@@ -1,4 +1,5 @@
-/* The pipis documentation. Plain CSS: the pages are made at build time, so there is nothing for a utility framework to scan. The fonts are apps/docs/src/fonts.css. */
+/* The pipis documentation, in the classic theme (the default): the design in variables, a light and a dark theme, with rounded corners and soft shadows. The
+   fonts are apps/docs/src/fonts.css. The other theme is apps/docs/src/themes/terminal/site.css. */
 :root {
   color-scheme: light;
   --font: 'Inter Variable', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

@@ -296,7 +296,10 @@ describe('the dev server', () => {
       expect(sheet).toContain('virtual:docs/styles.css');
       const css = await fetch(origin + (sheet ?? ''), { headers: { accept: 'text/css' } });
       expect(css.headers.get('content-type')).toContain('text/css');
-      expect(await css.text()).toContain('.example-code');
+      const sheetText = await css.text();
+      expect(sheetText).toContain('.example-code');
+      // The typefaces are in that sheet too: a script's sheet arrives after the page is shown, and the text would be drawn in the fallback faces first.
+      expect(sheetText, 'the faces are in the linked style sheet').toContain('@font-face');
       expect((await get('/guide/lifecycle.html')).status).toBe(200);
       expect((await get('/assets/frame.html')).status).toBe(200);
       const demo = await get('/demo/demo-app.html');
@@ -315,6 +318,13 @@ describe('the dev server', () => {
         await page.locator('[data-action=theme]').click();
         expect(await page.evaluate(() => document.documentElement.dataset.theme)).toMatch(/light|dark/);
         expect(problems).toEqual([]);
+        // The search index is made and served by the development server, so that the search works there as it does in a build.
+        expect((await get('/pagefind/pagefind.js')).status, 'the search index is served in development').toBe(200);
+        await page.keyboard.press('Control+k');
+        await page.locator('dialog.search input').fill('Suspense');
+        await page.locator('.search-results a').first().waitFor({ timeout: 30_000 });
+        expect(problems).toEqual([]);
+        await page.keyboard.press('Escape');
         await page.goto(origin + '/demo/demo-app.html#todo');
         await page.waitForFunction(() => document.body.childElementCount > 0, undefined, { timeout: 60_000 });
       } finally {

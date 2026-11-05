@@ -11,6 +11,7 @@
 // The two sides of the library are the bundler's to choose, and Vite's environments are how: the browser's (`client`) and the server's (`ssr`)
 // are given the conditions that make the library the build of each (`options.conditions`).
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -335,6 +336,21 @@ export function docsKit(options: DocsOptions): Plugin {
 
     const pages = () => (loaded ??= loadPages(pagesOptions()));
     const frame = () => (frames ??= frameFiles(frameOptions(), pages().examples));
+    // The search index is what the build writes, made the same way from the pages as they render now: the first time it is asked for, and again
+    // after a change. It is written out of the way, and served from there under /pagefind/.
+    const scratch = join(root, 'out', 'docs-search-dev');
+    let index: Promise<void> | undefined;
+    const searchIndex = () =>
+      (index ??= (async () => {
+        const render: Render = (await server.ssrLoadModule(resolve(root, options.server))).render;
+        rmSync(scratch, { recursive: true, force: true });
+        for (const page of pages().pages)
+          write(join(scratch, page.url), `<!doctype html>\n${render(page, { script: '', styles: [], fonts: [] })}\n`);
+        await writeSearchIndex(scratch);
+      })().catch((error: unknown) => {
+        index = undefined;
+        throw error;
+      }));
 
     // The Markdown, the kit and the library are what the pages and the frames are made of: a change to one is a reload.
     const docsDir = resolve(root, options.docs);
@@ -345,6 +361,7 @@ export function docsKit(options: DocsOptions): Plugin {
       if (!watched.some((d) => normalize(file).startsWith(d + sep)) || /\.test\.tsx?$|\/(?:node_modules|dist|out)\//.test(path)) return;
       loaded = undefined;
       frames = undefined;
+      index = undefined;
       if (normalize(file).startsWith(docsDir + sep)) server.ws.send({ type: 'full-reload', path: '*' });
     });
 
@@ -372,9 +389,24 @@ export function docsKit(options: DocsOptions): Plugin {
     }
 
     server.middlewares.use((req, res, next) => {
+      const path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
+      if (path.startsWith('/pagefind/') && options.pages !== 'single') {
+        const file = resolve(scratch, `.${path}`);
+        if (!file.startsWith(scratch + sep)) return next();
+        searchIndex()
+          .then(async () => {
+            res.statusCode = 200;
+            res.setHeader('content-type', TYPES[extname(path)] ?? 'application/octet-stream');
+            res.end(await readFile(file));
+          })
+          .catch((error: unknown) => {
+            log.error(`the search index did not make: ${String(error)}`, { timestamp: true });
+            res.statusCode = 404;
+            res.end();
+          });
+        return;
+      }
       const handle = async () => {
-        const url = new URL(req.url ?? '/', 'http://localhost');
-        const path = decodeURIComponent(url.pathname);
         if (path.startsWith('/assets/')) {
           const files = await frame();
           const file = files[path.slice('/assets/'.length)];

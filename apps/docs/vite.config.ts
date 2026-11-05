@@ -3,7 +3,7 @@ import { defineConfig } from 'vite-plus';
 import { docsSite } from './src/vite-plugin.ts';
 
 export default defineConfig({
-  plugins: [docsSite({ render: 'islands', pages: 'separate' })],
+  plugins: [docsSite({ render: 'islands', pages: 'separate', theme: 'terminal' })],
   test: {
     pool: 'forks',
     isolate: true,
